@@ -127,17 +127,12 @@ class Segmentation:
 
         # Salvar as imagens
         if highest_counts['proliferativas'][1] is not None:
-            self.save_slice(highest_counts['proliferativas'], f'Fatia com mais células proliferativas: {highest_counts['proliferativas'][0]}', 'proliferativas.png', X, Y)
+            self.save_slice(highest_counts['proliferativas'], f'Fatia com mais células proliferativas: {highest_counts['proliferativas'][0]}', 'results/proliferativas.png', X, Y)
         if highest_counts['quiescentes'][1] is not None:
-            self.save_slice(highest_counts['quiescentes'], f'Fatia com mais células quiescentes: {highest_counts['quiescentes'][0]}', 'quiescentes.png', X, Y)
+            self.save_slice(highest_counts['quiescentes'], f'Fatia com mais células quiescentes: {highest_counts['quiescentes'][0]}', 'results/quiescentes.png', X, Y)
         if highest_counts['necroticas'][1] is not None:
-            self.save_slice(highest_counts['necroticas'], f'Fatia com mais células necróticas: {highest_counts['necroticas'][0]}', 'necroticas.png', X, Y)
+            self.save_slice(highest_counts['necroticas'], f'Fatia com mais células necróticas: {highest_counts['necroticas'][0]}', 'results/necroticas.png', X, Y)
 
 
     def __str__(self):
         return f"Proliferativas: {self._proliferativas}\nQuiescentes: {self._quiescentes}\nNecroticas: {self._necroticas}"
-
-seg = Segmentation()
-seg.save_highest()
-
-# TODO: 1 & 2

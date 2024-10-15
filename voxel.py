@@ -6,4 +6,21 @@ class Voxel:
         self.value = voxel_value
         self.neighbors = []
         self.was_visited = False
-        self.type = 0 if self.value == 255 else 1 if self.value == 200 else 2
+
+    def get_group(self, group):
+        stack = [self]
+        self.was_visited = True
+        group.append(self)
+
+        while stack:
+            current = stack.pop()
+            if self.neighbors:
+                for neighbor in current.neighbors:
+                    if not neighbor.was_visited and neighbor.value == current.value:
+                        neighbor.was_visited = True
+                        group.append(neighbor)
+                        stack.append(neighbor)
+
+    def __str__(self):
+        return f"x: {self.x}, y: {self.y}, z: {self.z}, value: {self.value}, was visited: {self.was_visited}"
+

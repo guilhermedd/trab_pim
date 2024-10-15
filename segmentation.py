@@ -27,19 +27,22 @@ class Segmentation:
     def get_cells(self):
         # Supondo que os dados são tridimensionais (por exemplo, 101x101x101)
         for z in range(len(self._data)):
+            y_group = []
             for y in range(len(self._data[z])):
+                x_group = []
                 for x in range(len(self._data[z][y])):
                     value = self._data[z][y][x]
-                    self.visited_cells.append(Voxel(x, y, z, value))
+                    x_group.append(Voxel(x, y, z, value))
                     if value == 255:
                         self._proliferativas += 1
                     elif value == 200:
                         self._quiescentes += 1
                     elif value == 140:
                         self._necroticas += 1
-
+                y_group.append(x_group)
+            self.visited_cells.append(y_group)
         self.connect_6()
-
+        self.get_groups()
 
     def plot_3d(self):
         # Definir a fatia no eixo z
@@ -92,46 +95,48 @@ class Segmentation:
         plt.show()  # Exibir a figura
 
 
-    def save_slice(self, count, title, filename, X, Y):
-        fig, ax = plt.subplots()
-        c = ax.pcolormesh(np.arange(X), np.arange(Y), count[1])
-        ax.axis('off')
-        fig.colorbar(c, ax=ax)
-        plt.title(title)
-        plt.savefig(filename)
-        plt.close(fig)
-
-
     def save_highest(self):
-        highest_counts = {
-            'proliferativas': (0, None),  # (count, slice)
-            'quiescentes': (0, None),
-            'necroticas': (0, None)
-        }
-
-        X = self._data.shape[1]  # Largura da fatia
-        Y = self._data.shape[2]  # Altura da fatia
-
-        for z in self._data:
-            proliferativas = np.sum(z == 255)
-            quiescentes = np.sum(z == 200)
-            necroticas = np.sum(z == 140)
-
-            if proliferativas > highest_counts['proliferativas'][0]:
-                highest_counts['proliferativas'] = (proliferativas, z)
-
-            if quiescentes > highest_counts['quiescentes'][0]:
-                highest_counts['quiescentes'] = (quiescentes, z)
-
-            if necroticas > highest_counts['necroticas'][0]:
-                highest_counts['necroticas'] = (necroticas, z)
-
-        if highest_counts['proliferativas'][1] is not None:
-            self.save_slice(highest_counts['proliferativas'], f'Fatia com mais células proliferativas: {highest_counts['proliferativas'][0]}', 'results/proliferativas.png', X, Y)
-        if highest_counts['quiescentes'][1] is not None:
-            self.save_slice(highest_counts['quiescentes'], f'Fatia com mais células quiescentes: {highest_counts['quiescentes'][0]}', 'results/quiescentes.png', X, Y)
-        if highest_counts['necroticas'][1] is not None:
-            self.save_slice(highest_counts['necroticas'], f'Fatia com mais células necróticas: {highest_counts['necroticas'][0]}', 'results/necroticas.png', X, Y)
+        proli = max(self._pro_group, key=len)
+        quie = max(self._qui_group, key=len)
+        necro = max(self._nec_group, key=len)
+        x, y, z = [], [], []
+        for cell in proli:
+            x.append(cell.x)
+            y.append(cell.y)
+            z.append(cell.z)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(x, y, z, c='b', marker='o')  # 'c' para cor e 'marker' para o formato dos pontos
+        ax.set_xlabel('Eixo X')
+        ax.set_ylabel('Eixo Y')
+        ax.set_zlabel('Eixo Z')
+        plt.savefig("max_proliferas.png")
+        ################################################################
+        x, y, z = [], [], []
+        for cell in quie:
+            x.append(cell.x)
+            y.append(cell.y)
+            z.append(cell.z)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(x, y, z, c='b', marker='o')  # 'c' para cor e 'marker' para o formato dos pontos
+        ax.set_xlabel('Eixo X')
+        ax.set_ylabel('Eixo Y')
+        ax.set_zlabel('Eixo Z')
+        plt.savefig("max_quiescentes.png")
+        ################################################################
+        x, y, z = [], [], []
+        for cell in necro:
+            x.append(cell.x)
+            y.append(cell.y)
+            z.append(cell.z)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(x, y, z, c='b', marker='o')  # 'c' para cor e 'marker' para o formato dos pontos
+        ax.set_xlabel('Eixo X')
+        ax.set_ylabel('Eixo Y')
+        ax.set_zlabel('Eixo Z')
+        plt.savefig("max_necroticas s.png")
 
 
     def connect_6(self):
@@ -143,24 +148,34 @@ class Segmentation:
             (0, 0, 1),      # Frente
             (0, 0, -1)      # Trás
         ]
-        for cell in self.visited_cells:
-            for neighbor in neighbors:
-                new_x, new_y, new_z = cell.x + neighbor[0], cell.y + neighbor[1], cell.z + neighbor[2]
-                try:
-                    cell[0].neighbors.append(self.visited_cells[new_z][new_y][new_x])
-                except:
-                    pass
+        for z in self.visited_cells:
+            for y in z:
+                for cell in y:
+                    for neighbor in neighbors:
+                        new_x, new_y, new_z = cell.x + neighbor[0], cell.y + neighbor[1], cell.z + neighbor[2]
+                        try:
+                            cell.neighbors.append(self.visited_cells[new_z][new_y][new_x])
+                        except:
+                            pass
+
 
     def get_groups(self):
-        for cell in self.visited_cells:
-            if not cell.was_visited and cell.value > 0:
-                group_size = cell.get_group()
-                if cell.value == 255:
-                    self._pro_group.append(group_size)
-                elif cell.value == 200:
-                    self._qui_group.append(group_size)
-                else:
-                    self._nec_group.append(group_size)
+        for z in self.visited_cells:
+            for y in z:
+                for cell in y:
+                    if not cell.was_visited and cell.value > 0:
+                        group_size = []
+                        cell.get_group(group_size)
+                        if cell.value == 255:
+                            self._pro_group.append(group_size)
+                        elif cell.value == 200:
+                            self._qui_group.append(group_size)
+                        else:
+                            self._nec_group.append(group_size)
+                        cell.was_visited = True
 
     def __str__(self):
-        return f"Proliferativas: {self._proliferativas}\nQuiescentes: {self._quiescentes}\nNecroticas: {self._necroticas}"
+        return (f"Proliferativas: {self._proliferativas}, "
+                f"com {len(self._pro_group)} grupos: {[len(x) for x in self._pro_group]}\nQuiescentes: {self._quiescentes}, "
+                f"com {len(self._qui_group)} grupos: {[len(x) for x in self._qui_group]}\nNecroticas: {self._necroticas}, "
+                f"com {len(self._nec_group)} grupos: {[len(x) for x in self._nec_group]}")

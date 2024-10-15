@@ -1,20 +1,21 @@
 import pickle
-from cgi import print_arguments
-from pprint import pprint
 from matplotlib.animation import FuncAnimation
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-from mpl_toolkits.mplot3d import Axes3D
+from voxel import Voxel
 
 class Segmentation:
     def __init__(self):
         self._model_path        = "volume_TAC"
         self._data              = self.get_data()
-        self._proliferativas    = 0
-        self._quiescentes       = 0
-        self._necroticas        = 0
+        self._proliferativas    = 0 # 255
+        self._quiescentes       = 0 # 200
+        self._necroticas        = 0 # 140
         self._all_data          = []
+        self.visited_cells      = []
+        self._pro_group         = []
+        self._qui_group         = []
+        self._nec_group         = []
         self.get_cells()
 
 
@@ -25,15 +26,19 @@ class Segmentation:
 
     def get_cells(self):
         # Supondo que os dados são tridimensionais (por exemplo, 101x101x101)
-        for z in self._data:
-            for y in z:
-                for x in y:
-                    if x == 255:
+        for z in range(len(self._data)):
+            for y in range(len(self._data[z])):
+                for x in range(len(self._data[z][y])):
+                    value = self._data[z][y][x]
+                    self.visited_cells.append(Voxel(x, y, z, value))
+                    if value == 255:
                         self._proliferativas += 1
-                    elif x == 200:
+                    elif value == 200:
                         self._quiescentes += 1
-                    elif x == 140:
+                    elif value == 140:
                         self._necroticas += 1
+
+        self.connect_6()
 
 
     def plot_3d(self):
@@ -107,12 +112,11 @@ class Segmentation:
         X = self._data.shape[1]  # Largura da fatia
         Y = self._data.shape[2]  # Altura da fatia
 
-        for z in self._data:  # Para cada fatia no volume 3D
+        for z in self._data:
             proliferativas = np.sum(z == 255)
             quiescentes = np.sum(z == 200)
             necroticas = np.sum(z == 140)
 
-            # Atualiza os maiores valores encontrados
             if proliferativas > highest_counts['proliferativas'][0]:
                 highest_counts['proliferativas'] = (proliferativas, z)
 
@@ -122,10 +126,6 @@ class Segmentation:
             if necroticas > highest_counts['necroticas'][0]:
                 highest_counts['necroticas'] = (necroticas, z)
 
-        # Função para salvar a fatia mais alta
-
-
-        # Salvar as imagens
         if highest_counts['proliferativas'][1] is not None:
             self.save_slice(highest_counts['proliferativas'], f'Fatia com mais células proliferativas: {highest_counts['proliferativas'][0]}', 'results/proliferativas.png', X, Y)
         if highest_counts['quiescentes'][1] is not None:
@@ -133,6 +133,34 @@ class Segmentation:
         if highest_counts['necroticas'][1] is not None:
             self.save_slice(highest_counts['necroticas'], f'Fatia com mais células necróticas: {highest_counts['necroticas'][0]}', 'results/necroticas.png', X, Y)
 
+
+    def connect_6(self):
+        neighbors = [
+            (1, 0, 0),      # Direita
+            (-1, 0, 0),     # Esquerda
+            (0, 1, 0),      # Cima
+            (0, -1, 0),     # Baixo
+            (0, 0, 1),      # Frente
+            (0, 0, -1)      # Trás
+        ]
+        for cell in self.visited_cells:
+            for neighbor in neighbors:
+                new_x, new_y, new_z = cell.x + neighbor[0], cell.y + neighbor[1], cell.z + neighbor[2]
+                try:
+                    cell[0].neighbors.append(self.visited_cells[new_z][new_y][new_x])
+                except:
+                    pass
+
+    def get_groups(self):
+        for cell in self.visited_cells:
+            if not cell.was_visited and cell.value > 0:
+                group_size = cell.get_group()
+                if cell.value == 255:
+                    self._pro_group.append(group_size)
+                elif cell.value == 200:
+                    self._qui_group.append(group_size)
+                else:
+                    self._nec_group.append(group_size)
 
     def __str__(self):
         return f"Proliferativas: {self._proliferativas}\nQuiescentes: {self._quiescentes}\nNecroticas: {self._necroticas}"

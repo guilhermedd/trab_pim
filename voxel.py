@@ -3,6 +3,7 @@ class Voxel:
         self.x = x
         self.y = y
         self.z = z
-        self.voxel_value = voxel_value
+        self.value = voxel_value
         self.neighbors = []
         self.was_visited = False
+        self.type = 0 if self.value == 255 else 1 if self.value == 200 else 2

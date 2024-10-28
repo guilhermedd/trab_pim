@@ -8,9 +8,9 @@ class Segmentation:
     def __init__(self):
         self._model_path        = "volume_TAC"
         self._data              = self.get_data()
-        self._proliferativas    = 0 # 255
-        self._quiescentes       = 0 # 200
-        self._necroticas        = 0 # 140
+        self._proliferativas    = 0 # Células com valor 255
+        self._quiescentes       = 0 # Células com valor 200
+        self._necroticas        = 0 # Células com valor 140
         self._all_data          = []
         self.visited_cells      = []
         self._pro_group         = []
@@ -20,12 +20,13 @@ class Segmentation:
 
 
     def get_data(self):
+        # Carrega os dados da tomografia simulada (matriz numpy 3D) a partir de um arquivo pickle
         with open(self._model_path, "rb") as f:
             return pickle.load(f)
 
 
     def get_cells(self):
-        # Supondo que os dados são tridimensionais (por exemplo, 101x101x101)
+        # Processa os dados tridimensionais e armazena as informações de cada voxel
         for z in range(len(self._data)):
             y_group = []
             for y in range(len(self._data[z])):
@@ -45,7 +46,7 @@ class Segmentation:
         self.get_groups()
 
     def plot_3d(self):
-        # Definir a fatia no eixo z
+        # Visualização de uma fatia do volume tomográfico
         z_index = 50
         slice_data = self._data[z_index, :, :]
 
@@ -68,7 +69,7 @@ class Segmentation:
 
 
     def slice_plot(self, pause_time=500):
-        # Verificar o formato dos dados
+        # Animação da visualização das fatias do volume tomográfico
         if self._data.ndim != 3:
             raise ValueError("Os dados não têm a forma esperada de um volume 3D")
 
@@ -94,52 +95,42 @@ class Segmentation:
 
         plt.show()  # Exibir a figura
 
-
     def save_highest(self):
-        proli = max(self._pro_group, key=len)
-        quie = max(self._qui_group, key=len)
-        necro = max(self._nec_group, key=len)
-        x, y, z = [], [], []
-        for cell in proli:
-            x.append(cell.x)
-            y.append(cell.y)
-            z.append(cell.z)
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(x, y, z, c='b', marker='o')  # 'c' para cor e 'marker' para o formato dos pontos
-        ax.set_xlabel('Eixo X')
-        ax.set_ylabel('Eixo Y')
-        ax.set_zlabel('Eixo Z')
-        plt.savefig("max_proliferas.png")
-        ################################################################
-        x, y, z = [], [], []
-        for cell in quie:
-            x.append(cell.x)
-            y.append(cell.y)
-            z.append(cell.z)
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(x, y, z, c='b', marker='o')  # 'c' para cor e 'marker' para o formato dos pontos
-        ax.set_xlabel('Eixo X')
-        ax.set_ylabel('Eixo Y')
-        ax.set_zlabel('Eixo Z')
-        plt.savefig("max_quiescentes.png")
-        ################################################################
-        x, y, z = [], [], []
-        for cell in necro:
-            x.append(cell.x)
-            y.append(cell.y)
-            z.append(cell.z)
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(x, y, z, c='b', marker='o')  # 'c' para cor e 'marker' para o formato dos pontos
-        ax.set_xlabel('Eixo X')
-        ax.set_ylabel('Eixo Y')
-        ax.set_zlabel('Eixo Z')
-        plt.savefig("max_necroticas s.png")
+        # Salva os maiores agrupamentos de cada tipo de célula com visualização de conexões
+        for group, filename, color, cell_type in [
+            (self._pro_group, "max_proliferativas.png", 'r', "Células Proliferativas"),
+            (self._qui_group, "max_quiescentes.png", 'g', "Células Quiescentes"),
+            (self._nec_group, "max_necroticas.png", 'b', "Células Necróticas")
+        ]:
+            largest_group = max(group, key=len)
+            x, y, z = [], [], []
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
 
+            # Plotar os pontos individuais
+            for cell in largest_group:
+                x.append(cell.x)
+                y.append(cell.y)
+                z.append(cell.z)
+            ax.scatter(x, y, z, c=color, marker='o')
+
+            # Adicionar as conexões entre os pontos
+            for cell in largest_group:
+                for neighbor in cell.neighbors:
+                    if neighbor in largest_group:  # Apenas conectar se ambos os voxels estiverem no grupo
+                        x_line = [cell.x, neighbor.x]
+                        y_line = [cell.y, neighbor.y]
+                        z_line = [cell.z, neighbor.z]
+                        ax.plot(x_line, y_line, z_line, color=color, alpha=0.5)
+
+            ax.set_title(f'{cell_type} - Maior Agrupamento')
+            ax.set_xlabel('Eixo X')
+            ax.set_ylabel('Eixo Y')
+            ax.set_zlabel('Eixo Z')
+            plt.savefig(filename)
 
     def connect_6(self):
+        # Define a vizinhança 3D usando conectividade-6
         neighbors = [
             (1, 0, 0),      # Direita
             (-1, 0, 0),     # Esquerda
@@ -160,6 +151,7 @@ class Segmentation:
 
 
     def get_groups(self):
+        # Identifica os agrupamentos de células
         for z in self.visited_cells:
             for y in z:
                 for cell in y:
@@ -175,7 +167,10 @@ class Segmentation:
                         cell.was_visited = True
 
     def __str__(self):
+        # Retorna um resumo dos dados processados
         return (f"Proliferativas: {self._proliferativas}, "
-                f"com {len(self._pro_group)} grupos: {[len(x) for x in self._pro_group]}\nQuiescentes: {self._quiescentes}, "
-                f"com {len(self._qui_group)} grupos: {[len(x) for x in self._qui_group]}\nNecroticas: {self._necroticas}, "
+                f"com {len(self._pro_group)} grupos: {[len(x) for x in self._pro_group]}\n"
+                f"Quiescentes: {self._quiescentes}, "
+                f"com {len(self._qui_group)} grupos: {[len(x) for x in self._qui_group]}\n"
+                f"Necroticas: {self._necroticas}, "
                 f"com {len(self._nec_group)} grupos: {[len(x) for x in self._nec_group]}")

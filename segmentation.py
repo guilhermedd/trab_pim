@@ -98,9 +98,9 @@ class Segmentation:
     def save_highest(self):
         # Salva os maiores agrupamentos de cada tipo de célula com visualização de conexões
         for group, filename, color, cell_type in [
-            (self._pro_group, "max_proliferativas.png", 'r', "Células Proliferativas"),
-            (self._qui_group, "max_quiescentes.png", 'g', "Células Quiescentes"),
-            (self._nec_group, "max_necroticas.png", 'b', "Células Necróticas")
+            (self._pro_group, "results/max_proliferativas.png", 'r', "Células Proliferativas"),
+            (self._qui_group, "results/max_quiescentes.png", 'g', "Células Quiescentes"),
+            (self._nec_group, "results/max_necroticas.png", 'b', "Células Necróticas")
         ]:
             largest_group = max(group, key=len)
             x, y, z = [], [], []
@@ -121,7 +121,7 @@ class Segmentation:
                         x_line = [cell.x, neighbor.x]
                         y_line = [cell.y, neighbor.y]
                         z_line = [cell.z, neighbor.z]
-                        ax.plot(x_line, y_line, z_line, color=color, alpha=0.5)
+                        ax.plot(x_line, y_line, z_line, color=color, alpha=0.3)
 
             ax.set_title(f'{cell_type} - Maior Agrupamento')
             ax.set_xlabel('Eixo X')
